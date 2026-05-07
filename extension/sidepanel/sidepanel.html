@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>MCBG Export</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="header">
+    <div class="title">MaxCompute 导出</div>
+    <div class="profile-bar">
+      <select id="profileSel"></select>
+      <button id="btnOptions" class="icon-btn" title="配置">⚙</button>
+    </div>
+  </div>
+
+  <div id="noProfile" class="empty hidden">
+    未配置 profile，请先打开<a href="#" id="goOptions">配置页</a>。
+  </div>
+
+  <div id="mainPane">
+    <div class="tabs">
+      <button class="tab active" data-mode="table">表 + 字段</button>
+      <button class="tab" data-mode="sql">自定义 SQL</button>
+    </div>
+
+    <div class="pane" data-pane="table">
+      <label>表名</label>
+      <div class="inline">
+        <input id="tableName" type="text" placeholder="project.table 或 table">
+        <button id="btnLoadSchema" class="btn">加载 schema</button>
+      </div>
+
+      <div id="partitionArea" class="hidden">
+        <label>分区</label>
+        <div class="inline">
+          <select id="partitionSel"><option value="">（全部分区）</option></select>
+          <button id="btnLoadParts" class="btn-small" title="刷新分区列表">↻</button>
+        </div>
+      </div>
+
+      <div id="columnArea" class="hidden">
+        <div class="row-between">
+          <label>字段</label>
+          <span class="muted">
+            <a href="#" id="selectAll">全选</a>
+            /
+            <a href="#" id="selectNone">全不选</a>
+          </span>
+        </div>
+        <div id="columnList" class="column-list"></div>
+      </div>
+
+      <label>WHERE 条件（可选）</label>
+      <input id="whereInput" type="text" placeholder="如 status = 'ok' AND dt >= '20260401'">
+    </div>
+
+    <div class="pane hidden" data-pane="sql">
+      <label>SQL 查询（直接返回结果）</label>
+      <textarea id="sqlInput" rows="10" placeholder="SELECT col1, col2 FROM my_table WHERE dt = '20260501' LIMIT 10000"></textarea>
+    </div>
+
+    <div class="format-row">
+      <div>
+        <label>导出格式</label>
+        <label class="radio"><input type="radio" name="fmt" value="xlsx" checked> xlsx</label>
+        <label class="radio"><input type="radio" name="fmt" value="csv"> csv</label>
+      </div>
+      <div>
+        <label>文件名</label>
+        <input id="filename" type="text" placeholder="（可选，默认表名）">
+      </div>
+    </div>
+    <div class="muted" style="margin-top:4px;">提示：字段含大 JSON / 长文本时，csv 导出速度明显更快。</div>
+
+    <div id="estimate" class="estimate hidden"></div>
+
+    <div class="actions">
+      <button id="btnExport" class="btn btn-primary">开始导出</button>
+      <button id="btnCancel" class="btn btn-danger hidden">取消</button>
+    </div>
+
+    <div id="taskArea" class="hidden">
+      <div class="progress-wrap">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+      <div id="taskStatus" class="task-status"></div>
+    </div>
+
+    <div id="errBox" class="err hidden"></div>
+  </div>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

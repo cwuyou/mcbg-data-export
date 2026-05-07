@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>MCBG Data Export 配置</title>
+  <style>
+    body { font-family: -apple-system, "Segoe UI", sans-serif; max-width: 720px; margin: 24px auto; padding: 0 16px; color: #222; }
+    h1 { font-size: 18px; margin-bottom: 4px; }
+    .hint { color: #888; font-size: 12px; margin-bottom: 16px; }
+    .warn { background: #fff7e6; border: 1px solid #ffd591; padding: 8px 12px; border-radius: 4px; color: #613400; font-size: 12px; margin-bottom: 16px; }
+    fieldset { border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; }
+    legend { padding: 0 4px; font-weight: 600; }
+    label { display: block; font-size: 12px; color: #555; margin: 6px 0 2px; }
+    input[type="text"], input[type="password"], select { width: 100%; padding: 6px 8px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn { cursor: pointer; padding: 6px 14px; font-size: 13px; border-radius: 4px; border: 1px solid #d9d9d9; background: #fff; }
+    .btn-primary { background: #1677ff; color: #fff; border-color: #1677ff; }
+    .btn-danger { background: #fff; color: #d00; border-color: #fca5a5; }
+    .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+    .profile-item { border: 1px solid #eee; padding: 10px 12px; border-radius: 6px; margin-bottom: 10px; }
+    .profile-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .profile-title { font-weight: 600; font-size: 13px; }
+    .muted { color: #999; font-size: 12px; }
+    .saved-banner { background: #f6ffed; border: 1px solid #b7eb8f; color: #135200; padding: 6px 10px; border-radius: 4px; font-size: 12px; margin-bottom: 12px; display: none; }
+    .saved-banner.show { display: block; }
+  </style>
+</head>
+<body>
+  <h1>MCBG Data Export 配置</h1>
+  <div class="hint">配置 MaxCompute 接入凭据和本地服务地址。支持多 profile（如开发 / 生产）。</div>
+  <div class="warn">⚠ AccessKey 保存在浏览器本地存储，仅做简单混淆，不是加密。请勿在公共或多人共用的浏览器配置中保存生产凭据。</div>
+
+  <div id="savedBanner" class="saved-banner">已保存</div>
+
+  <fieldset>
+    <legend>本地服务</legend>
+    <label>服务地址</label>
+    <input id="serverUrl" type="text" placeholder="http://127.0.0.1:19527">
+    <div class="muted">运行 server/run.py 启动本地服务后，这里一般保持默认即可。</div>
+    <div class="actions">
+      <button id="btnPing" class="btn">测试连接</button>
+      <span id="pingResult" class="muted"></span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Profile 列表</legend>
+    <label>默认 profile</label>
+    <select id="activeProfile"></select>
+
+    <div id="profileList" style="margin-top: 12px;"></div>
+
+    <div class="actions">
+      <button id="btnAdd" class="btn">新增 profile</button>
+    </div>
+  </fieldset>
+
+  <div class="actions">
+    <button id="btnSave" class="btn btn-primary">保存</button>
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>
