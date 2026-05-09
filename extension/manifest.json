@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "MCBG Data Export",
-  "version": "0.1.0",
-  "description": "MaxCompute 表数据一键导出为 xlsx / csv，支持百万级。需配合本地服务使用。",
+  "version": "0.2.3",
+  "description": "MaxCompute 表数据一键导出为 xlsx / csv，支持百万级。",
   "action": {
     "default_title": "MaxCompute Data Export",
     "default_icon": {
@@ -21,8 +21,8 @@
   },
   "permissions": ["storage", "downloads", "sidePanel"],
   "host_permissions": [
-    "http://127.0.0.1/*",
-    "http://localhost/*"
+    "http://*/*",
+    "https://*/*"
   ],
   "icons": {
     "16": "icons/icon16.png",

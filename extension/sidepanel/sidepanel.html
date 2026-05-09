@@ -58,22 +58,32 @@
     <div class="pane hidden" data-pane="sql">
       <label>SQL 查询（直接返回结果）</label>
       <textarea id="sqlInput" rows="10" placeholder="SELECT col1, col2 FROM my_table WHERE dt = '20260501' LIMIT 10000"></textarea>
+      <div class="muted" style="margin-top:4px;">
+        ✓ CSV 模式零落盘直传，推荐用于大表导出（行数 ≥ 50 万 或 数据量 ≥ 500 MB 时自动 gzip）
+      </div>
     </div>
 
     <div class="format-row">
       <div>
         <label>导出格式</label>
-        <label class="radio"><input type="radio" name="fmt" value="xlsx" checked> xlsx</label>
-        <label class="radio"><input type="radio" name="fmt" value="csv"> csv</label>
+        <label class="radio"><input type="radio" name="fmt" value="csv" checked> csv</label>
+        <label class="radio"><input type="radio" name="fmt" value="xlsx"> xlsx</label>
       </div>
       <div>
         <label>文件名</label>
         <input id="filename" type="text" placeholder="（可选，默认表名）">
       </div>
     </div>
-    <div class="muted" style="margin-top:4px;">提示：字段含大 JSON / 长文本时，csv 导出速度明显更快。</div>
+    <div class="muted" style="margin-top:4px;">
+      提示：字段含大 JSON / 长文本时，csv 导出速度明显更快。
+      CSV 走零落盘直传；数据量大时服务端自动 gzip，文件名变为 .csv.gz
+    </div>
 
     <div id="estimate" class="estimate hidden"></div>
+    <div id="largeTableHint" class="warn-hint hidden">
+      <span>⚠ 该表行数较多，xlsx 单 sheet 上限 1,048,575 行会被自动拆 sheet，且 Excel 打开极慢。</span>
+      <a href="#" id="switchToCsv">切到 CSV →</a>
+    </div>
 
     <div class="actions">
       <button id="btnExport" class="btn btn-primary">开始导出</button>

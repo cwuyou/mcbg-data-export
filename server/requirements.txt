@@ -5,3 +5,4 @@ xlsxwriter>=3.2
 sse-starlette>=2.0
 pydantic>=2.5
 pyarrow>=14.0
+pandas>=1.3

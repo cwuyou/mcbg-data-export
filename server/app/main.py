@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,14 +11,28 @@ from .services.task_manager import cleanup_stale_files, EXPORT_DIR, disk_free_by
 
 app = FastAPI(title="MCBG Data Export", version="0.1.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origin_regex=r"^(chrome-extension://.*|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?)$",
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["Content-Disposition"],
-)
+# 公网部署时扩展从任意机器发请求，统一放开 origin。
+# 安全边界完全依赖 MaxCompute 自身的 AK/SK 校验（用户没选开启服务端鉴权）。
+_allow_all = os.environ.get("MCBG_CORS_ALLOW_ALL", "0") == "1"
+_EXPOSE_HEADERS = ["Content-Disposition", "X-MCBG-Compressed", "X-MCBG-Total-Rows", "X-MCBG-Source-Bytes"]
+if _allow_all:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=_EXPOSE_HEADERS,
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"^(chrome-extension://.*|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?)$",
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=_EXPOSE_HEADERS,
+    )
 
 
 @app.on_event("startup")

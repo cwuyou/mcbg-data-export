@@ -28,6 +28,9 @@ class ReaderContext:
     iter_records: Callable[[], Iterator[List[Any]]]
     # 可选：返回 pyarrow.RecordBatch 的迭代器；None 表示该源不支持 arrow
     iter_arrow_batches: Optional[Callable[[], Iterator[Any]]] = None
+    # 数据源在 MaxCompute 里的存储字节数（列存压缩后的大小）。
+    # None 表示源不支持（如 SQL Instance），调用方需要降级到只用行数判断。
+    size_bytes: Optional[int] = None
 
 
 _SENTINEL = object()
@@ -99,6 +102,21 @@ def open_table_reader(
     )
     total = session.count
 
+    # 抓表 / 分区的存储字节数。list 列存 + 压缩后的大小，用于预估 CSV 体积。
+    # pyodps 某些版本属性不同，全部 try/except 兜底。
+    size_bytes: Optional[int] = None
+    try:
+        if partition:
+            p = t.get_partition(partition)
+            size_bytes = getattr(p, "size", None)
+        else:
+            size_bytes = getattr(t, "size", None)
+        # 字段子集时按比例缩放（粗估）
+        if size_bytes and columns and all_cols:
+            size_bytes = int(size_bytes * len(use_cols) / len(all_cols))
+    except Exception:
+        size_bytes = None
+
     def iter_arrow_batches() -> Iterator[Any]:
         try:
             arrow_reader = session.open_arrow_reader(0, total, columns=use_cols)
@@ -127,6 +145,7 @@ def open_table_reader(
         total=total,
         iter_records=iter_records,
         iter_arrow_batches=iter_arrow_batches if arrow_supported else None,
+        size_bytes=size_bytes,
     )
 
 
@@ -148,12 +167,27 @@ def open_sql_reader(odps: ODPS, sql: str) -> ReaderContext:
         out_cols = [ColumnMeta(c.name, str(c.type)) for c in arrow_schema.simple_columns]
         col_names = [c.name for c in out_cols]
 
+        # 标记是否已经开始从 arrow_reader 消费 batch。一旦开始就不能再切非-arrow
+        # reader（游标已经前进，也不保证还能再次 open_reader）。只在"还没吐过数据"
+        # 的启动期允许回退到非-arrow 路径（主要覆盖 Windows 缺 tzdata 的场景）。
+        arrow_started = {"v": False}
+
         def iter_arrow_batches() -> Iterator[Any]:
             for batch in arrow_reader:
+                arrow_started["v"] = True
                 yield batch
 
         def iter_records() -> Iterator[List[Any]]:
-            yield from _iter_arrow_batch_rows(iter_arrow_batches(), col_names)
+            try:
+                yield from _iter_arrow_batch_rows(iter_arrow_batches(), col_names)
+                return
+            except Exception:
+                if arrow_started["v"]:
+                    raise
+            # 启动期失败（tzdata / schema 转换等），退回非-arrow reader
+            fallback = instance.open_reader(tunnel=True)
+            for rec in fallback:
+                yield _record_to_list(rec, col_names)
 
         return ReaderContext(
             columns=out_cols,

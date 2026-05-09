@@ -1,0 +1,25 @@
+[Unit]
+Description=MCBG Data Export Server (MaxCompute Tunnel)
+After=network.target
+
+[Service]
+Type=simple
+User=mcbg
+Group=mcbg
+WorkingDirectory=/opt/mcbg-data-export/server
+Environment="MCBG_HOST=0.0.0.0"
+Environment="MCBG_PORT=8080"
+Environment="MCBG_EXPORT_DIR=/var/lib/mcbg-export"
+Environment="MCBG_CORS_ALLOW_ALL=1"
+Environment="PATH=/opt/mcbg-data-export/server/.venv/bin:/usr/bin:/bin"
+ExecStart=/opt/mcbg-data-export/server/.venv/bin/python run.py
+Restart=on-failure
+RestartSec=5
+
+# 基础资源限制，避免单进程把机器打挂
+# 2核2G 机器用 1500M；升配后 (4G/8G) 可上调到 3G / 6G
+LimitNOFILE=65535
+MemoryMax=1500M
+
+[Install]
+WantedBy=multi-user.target

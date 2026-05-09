@@ -11,7 +11,7 @@ from sse_starlette.sse import EventSourceResponse
 from ..models import ExportRequest, ExportTaskResponse
 from ..services.odps_client import credentials_from_headers, build_odps, OdpsCredentials
 from ..services.reader import open_table_reader, open_sql_reader
-from ..services.exporter_csv import stream_csv
+from ..services.exporter_csv import stream_csv, stream_csv_maybe_gzip
 from ..services.exporter_xlsx import write_xlsx
 from ..services.task_manager import (
     task_manager,
@@ -55,18 +55,34 @@ def export_stream(
     req: ExportRequest,
     creds: OdpsCredentials = Depends(credentials_from_headers),
 ):
-    """CSV 专用：零磁盘，直接流式返回给浏览器。"""
+    """CSV 专用：零磁盘，直接流式返回给浏览器。
+    大数据量自动启用 gzip 压缩（文件名 .csv.gz，Content-Type application/gzip）。
+    """
     if req.format != "csv":
         raise HTTPException(status_code=400, detail="streaming endpoint only supports csv")
 
     odps = build_odps(creds)
     ctx = _open_reader(odps, req)
-    filename = export_filename(req.filename or req.table or "export", "csv")
+    base_name = req.filename or req.table or "export"
+
+    stream, is_gzip = stream_csv_maybe_gzip(ctx)
+    if is_gzip:
+        filename = export_filename(base_name, "csv.gz")
+        media_type = "application/gzip"
+    else:
+        filename = export_filename(base_name, "csv")
+        media_type = "text/csv; charset=utf-8"
 
     return StreamingResponse(
-        stream_csv(ctx),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": _content_disposition(filename)},
+        stream,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": _content_disposition(filename),
+            # 告诉扩展原始格式 + 是否压缩，方便 UI 显示
+            "X-MCBG-Compressed": "1" if is_gzip else "0",
+            "X-MCBG-Total-Rows": str(ctx.total) if ctx.total is not None else "",
+            "X-MCBG-Source-Bytes": str(ctx.size_bytes) if ctx.size_bytes is not None else "",
+        },
     )
 
 
@@ -75,12 +91,14 @@ async def export_task(
     req: ExportRequest,
     creds: OdpsCredentials = Depends(credentials_from_headers),
 ):
-    """xlsx / 大 csv 异步任务入口，返回 task_id 供 SSE 订阅和下载。"""
+    """xlsx / 大 csv 异步任务入口，返回 task_id 供 SSE 订阅和下载。
+
+    csv 格式下：行数超阈值时自动 gzip，文件名会是 .csv.gz。
+    因为任务创建时还拿不到 total，文件名在 job 里开 reader 后再敲定。
+    """
     odps = build_odps(creds)
     task = task_manager.create(loop=asyncio.get_running_loop())
-    filename = export_filename(req.filename or req.table or "export", req.format)
-    task.filename = filename
-    output_path = make_output_path(task.task_id, filename)
+    base_name = req.filename or req.table or "export"
 
     def job(t):
         try:
@@ -93,10 +111,22 @@ async def export_task(
                 task_manager.update(t, processed=n)
 
             if req.format == "xlsx":
+                filename = export_filename(base_name, "xlsx")
+                output_path = make_output_path(t.task_id, filename)
+                t.filename = filename
+                task_manager.update(t, filename=filename)
                 write_xlsx(ctx, output_path, progress=progress)
             else:
+                # CSV：按行数决定是否压缩，落盘文件名同步变 .csv.gz
+                stream, is_gzip = stream_csv_maybe_gzip(ctx, progress=progress)
+                ext = "csv.gz" if is_gzip else "csv"
+                filename = export_filename(base_name, ext)
+                output_path = make_output_path(t.task_id, filename)
+                t.filename = filename
+                task_manager.update(t, filename=filename)
+
                 with open(output_path, "wb") as f:
-                    for chunk in stream_csv(ctx, progress=progress):
+                    for chunk in stream:
                         if t.cancelled.is_set():
                             raise RuntimeError("cancelled")
                         f.write(chunk)

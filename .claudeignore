@@ -1,0 +1,13 @@
+node_modules
+.git
+dist
+build
+.next
+coverage
+.cache
+tmp
+logs
+*.log
+pnpm-lock.yaml
+package-lock.json
+yarn.lock

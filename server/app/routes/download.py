@@ -22,6 +22,8 @@ def download(task_id: str):
     media = (
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         if filename.endswith(".xlsx")
+        else "application/gzip"
+        if filename.endswith(".csv.gz")
         else "text/csv; charset=utf-8"
     )
     return FileResponse(

@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(node *)",
+      "Bash(bash -n /d/ai_code/mcbg-data-export/deploy/ecs_install.sh)"
     ]
   }
 }
